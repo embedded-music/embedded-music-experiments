@@ -2,7 +2,7 @@
 
 **Status:** pesquisa de design, não API nem roadmap
 
-**Última revisão:** 2026-09-22
+**Última revisão:** 2026-09-25
 
 ## Propósito
 
@@ -12,8 +12,9 @@ reinventar vocabulário estabelecido quanto transformar a primeira implementaç�
 útil numa abstração compartilhada cedo demais.
 
 As referências externas mostram possibilidades, não requisitos. A promoção de
-um conceito continua exigindo experimentos nossos e, para uma biblioteca
-compartilhada, pelo menos dois consumidores que revelem um contrato estável.
+um conceito deve ser guiada por experimentos nossos e por julgamento
+arquitetural; um limite promissor pode ser implementado como módulo
+experimental antes de haver dois consumidores ou um contrato final.
 
 ## Estados
 
@@ -42,6 +43,7 @@ não foi extraído como contrato compartilhado.
 | Monofonia / polifonia | alocação de vozes | MIDI, AMY e Roland P-6 | instrumento monofônico e slot AMY | adotado localmente |
 | Mute / mute all | política de pista | sequenciadores e Roland P-6 | interação planejada para Calculator | candidato |
 | Pattern | composição | sequenciadores e Roland P-6 | Calculator implementa um pattern volátil de quatro tracks por dezesseis steps | adotado localmente |
+| Sequence slot | armazenamento e seleção | 1010music Nanobox Razzmatazz | ainda não testado; Calculator tem apenas um pattern volátil | referência; candidato |
 | Note / rest | conteúdo do step | Behringer Crave e sequenciadores melódicos | Calculator implementa trigger/rest booleano sem pitch | adotado localmente para bateria |
 | Velocity / accent | evento e step | MIDI, Koala, Roland P-6 e Behringer Crave | velocity nos contratos e showcases MIDI | extraído para notas; candidato para steps |
 | Gate time | step e voz | Roland P-6 e Behringer Crave | ainda não necessário para bateria one-shot | adiado |
@@ -53,6 +55,10 @@ não foi extraído como contrato compartilhado.
 | Punch-in effect | performance temporária | Pocket Operators | ainda não testado | referência |
 | Accent | expressão do step | Pocket Operators e drum machines | velocity existe, accent por step ainda não | candidato distante |
 | Swing | clock e agendamento | Pocket Operators, Roland P-6 e Korg Volca | Calculator possui BPM variável, mas divisão reta | referência |
+| Step length / step count | geometria temporal | 1010music Nanobox Razzmatazz | Calculator fixa 16 steps e um rate global | referência; candidato |
+| Quantized sequence change | arranjo e transporte | 1010music Nanobox Razzmatazz | troca de pattern futura ainda não implementada | candidato |
+| Sequence copy / paste / double | edição e variação | 1010music Nanobox Razzmatazz | copy, variation e chains ainda são experimentos futuros | candidato |
+| Per-step velocity | expressão do evento | 1010music Nanobox Razzmatazz | Calculator ainda usa steps booleanos e velocidade fixa | referência; candidato |
 | Step Loop / Scatter | performance sobre transporte | Roland P-6 | ainda não testado | referência |
 | Active Step | geometria do pattern | Korg Volca | todos os 16 steps implementados permanecem ativos | referência |
 | Step Jump | performance sobre transporte | Korg Volca | troca de pattern planejada é quantizada, não um jump | referência |
@@ -64,6 +70,7 @@ não foi extraído como contrato compartilhado.
 | Reset / hold playhead | performance sobre transporte | Behringer Crave | ainda não testado | referência |
 | Arpeggiator traversal | geração algorítmica | Behringer Crave | ainda não testado | referência |
 | Composition hierarchy | arranjo e armazenamento | Teenage Engineering EP-133 K.O. II | Calculator combina tracks diretamente em patterns | referência |
+| Pattern bank / preset scope | ciclo de vida e armazenamento | 1010music Nanobox Razzmatazz | Calculator ainda inicia com um único pattern volátil | referência |
 | Commit / variation | workflow de composição | Teenage Engineering EP-133 K.O. II | ainda não testado | referência |
 | Scene duration policy | sincronização de patterns | Teenage Engineering EP-133 K.O. II | patterns atuais teriam duração uniforme | referência |
 | Parameter scope | estado e automação | Teenage Engineering EP-133 K.O. II | ainda não formalizado | referência |
@@ -98,6 +105,7 @@ não foi extraído como contrato compartilhado.
 | Resampling | criação de material | Koala e Roland P-6 | ainda não testado | referência |
 | Síntese granular | engine sonora | Roland P-6 | AMY é outra classe de engine | referência |
 | Clock / transport | tempo e execução | MIDI e sequenciadores | `StepClock` local mantém playback contínuo na Calculator; metronome Plus2 será o segundo experimento | observado, candidato |
+| External clock priority | sincronização | 1010music Nanobox Razzmatazz | ainda não testado em nossos instrumentos | referência; candidato |
 | Program / bank | seleção de sons | MIDI e instrumentos digitais | patches AMY selecionados por canal | referência; sem contrato próprio |
 
 ## Fronteiras sugeridas pela comparação
@@ -210,6 +218,49 @@ Essa diferença deve permanecer no radar até algum experimento nosso precisar
 gravar performance, pois o sequenciador Calculator edita steps e atribuições de
 som, mas não grava uma execução ao vivo.
 
+## 1010music Nanobox Razzmatazz
+
+O Razzmatazz é uma referência particularmente próxima do próximo passo do
+sequenciador Calculator: uma caixa de bateria compacta que combina pads,
+sequenciamento, síntese e samples numa mesma composição. A documentação oficial
+descreve oito pads, dezesseis slots de sequence por preset e uma tela de edição
+que mostra todos os pads enquanto mantém um pad em foco.
+
+As decisões mais úteis para o nosso radar são:
+
+- **Step length e step count são separados.** Cada sequence pode ter uma
+  divisão própria (de 1/64 a vários compassos) e de 1 a 64 steps. A duração
+  musical é `step length × step count`, em vez de ser implicitamente sempre
+  dezesseis posições.
+- **Troca de sequence é quantizada.** Ao selecionar outra sequence durante a
+  reprodução, ela começa quando a atual termina. Isso dá uma semântica clara
+  para `queue next pattern`, diferente de um jump imediato do playhead.
+- **Copy, paste, clear e double são operações de sequence.** A cópia inclui
+  triggers, configuração temporal e velocities; `Double` duplica o material no
+  fim. Isso separa variação estrutural de editar cada step individualmente.
+- **Gravação e edição são complementares.** Finger drumming e MIDI podem gravar
+  eventos em tempo real, quantizados ao step mais próximo, preservando velocity;
+  o Super Stepper permite corrigir triggers e velocity por pad e step depois.
+- **Swing é uma transformação do agendamento.** Ele desloca os steps pares de
+  1/16 em torno da posição reta e pode ser ouvido em tempo real, sem alterar o
+  conteúdo do pattern.
+- **O clock tem prioridade de fontes.** A ordem documentada é Clock In
+  analógico, depois MIDI Clock, depois BPM interno. Isto sugere que uma futura
+  camada de clock deve separar fonte, fallback e autoridade de tempo, em vez de
+  tratar `BPM` como a única origem possível.
+- **Preset é um escopo de composição.** Pad settings, mixer, efeitos, sequences,
+  sequence default, MIDI mappings e modulação são salvos juntos, explicitamente,
+  em cartão SD. Isso contrasta com o nosso pattern volátil e oferece uma
+  referência para separar estado de edição, material armazenado e transporte.
+
+O Razzmatazz não é uma especificação para copiar: sua tela touchscreen, seu
+modelo de samples/FM e seu armazenamento em SD resolvem problemas maiores que os
+da Calculator. A contribuição principal é semântica: `sequence` pode ser um
+objeto armazenável e selecionável, `pattern end` pode ser independente da grade
+visível, e uma troca futura pode ser solicitada agora para começar numa fronteira
+musical. Essas ideias entram como candidatos locais para o próximo slice de
+patterns, sem alterar ainda o contrato do clock compartilhado.
+
 ## Behringer Crave e o step melódico
 
 O Crave complementa as drum machines ao mostrar o conteúdo necessário para
@@ -232,7 +283,8 @@ posição temporal
 Isso não justifica uma estrutura `Step` universal. Pelo contrário, sugere que um
 futuro pattern reutilizável precisaria ser parametrizado pelo tipo de conteúdo,
 ou que `DrumStep` e `MonophonicNoteStep` deveriam permanecer modelos distintos.
-A decisão deve esperar os dois consumidores existirem.
+A decisão pode ser explorada diretamente no próximo consumidor; uma fronteira
+comum experimental pode ser criada e revisada conforme a implementação avance.
 
 O Crave também ajuda a separar conceitos que uma interface compacta aproxima:
 
@@ -531,6 +583,9 @@ no workflow de variações, não apenas na riqueza de cada step.
   choke configurável por parte.
 - [Korg Volca Sample overview](https://www.korg.com/us/products/dj/volca_sample/index.php):
   Active Step, Step Jump, swing e motion sequencing.
+- [1010music Nanobox Razzmatazz User Guide](https://1010music.com/wp-content/uploads/2022/10/Nanobox-Razzmatazz-User-Guide-v1-1-0.pdf):
+  oito pads, dezesseis sequences por preset, step length/count, gravação
+  quantizada, velocity, swing, copy/paste/double e prioridade de clock externo.
 - [Behringer Crave Quick Start Guide](https://mediadl.musictribe.com/download/documents/behringer/CRAVE/CRAVE_QSG_WW.pdf):
   notes/rests, gate length, accent, ratchet, pages, pattern end, reset, hold,
   arpeggiador e saídas CV/gate.
@@ -586,12 +641,13 @@ no workflow de variações, não apenas na riqueza de cada step.
 - [Moog Matriarch manual](https://api.moogmusic.com/sites/default/files/2019-08/Moog-Matriarch-Manual.pdf):
   steps com até quatro notas, tie, ratchets e saídas CV/velocity/gate.
 
-Links e comportamentos foram verificados em 2026-09-21. Uma atualização futura
+Links e comportamentos foram verificados em 2026-09-25. Uma atualização futura
 deve preservar a data e distinguir documentação oficial de inferências nossas.
 
 ## Regra de evolução
 
 Adicionar um item ao radar requer uma fonte ou observação reproduzível. Torná-lo
-uma prioridade exige um experimento concreto. Transformá-lo em contrato
-compartilhado exige consumidores reais suficientes para revelar o que permanece
-estável entre eles.
+uma prioridade exige um experimento concreto. Um módulo compartilhado pode ser
+criado experimentalmente quando a fronteira parecer promissora; seus contratos
+devem continuar explícitos e revisáveis conforme os consumidores reais tragam
+novas evidências.
