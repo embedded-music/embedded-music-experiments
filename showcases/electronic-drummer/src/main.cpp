@@ -4,10 +4,9 @@
 
 #include "AmyAudioActivityGate.h"
 #include "AmyM5SpeakerBridge.h"
-#include "AmySynthSlot.h"
+#include "AmyTriggerOutput.h"
 #include "DeadlineClock.h"
 #include "DrummerPresets.h"
-#include "TriggerEventSink.h"
 #include "TriggerPatternPlayer.h"
 
 namespace {
@@ -18,43 +17,11 @@ constexpr uint16_t INITIAL_BPM = 120;
 constexpr uint16_t MINIMUM_BPM = 40;
 constexpr uint16_t MAXIMUM_BPM = 240;
 constexpr uint16_t BPM_INCREMENT = 5;
-constexpr uint32_t DRUM_TAIL_MS = 1500;
-
-float velocityForStepLevel(StepLevel level) {
-  switch (level) {
-    case StepLevel::Weak: return 0.45f;
-    case StepLevel::Normal: return 0.70f;
-    case StepLevel::Strong: return 1.0f;
-    case StepLevel::Off: return 0.0f;
-  }
-  return 0.0f;
-}
-
-class AmyPresetSink final : public TriggerEventSink {
- public:
-  AmyPresetSink(AmyAudioActivityGate& gate, AmySynthSlot& slot,
-                const DrummerPreset& preset)
-      : gate_(gate), slot_(slot), preset_(preset) {}
-
-  void trigger(const TriggerEvent& event) override {
-    if (!awake_) {
-      gate_.wake(DRUM_TAIL_MS);
-      awake_ = true;
-    }
-    slot_.noteOn(preset_.midiNotes[event.lane],
-                 velocityForStepLevel(event.level));
-  }
-
- private:
-  AmyAudioActivityGate& gate_;
-  AmySynthSlot& slot_;
-  const DrummerPreset& preset_;
-  bool awake_ = false;
-};
 
 AmyM5SpeakerBridge amyBridge;
 AmyAudioActivityGate audioGate(amyBridge);
 AmySynthSlot drumSlot;
+AmyTriggerSink triggerSink(audioGate, drumSlot);
 DeadlineClock stepClock;
 DrummerPreset preset;
 DrummerStyle style = DrummerStyle::Rock;
@@ -87,13 +54,22 @@ void drawScreen() {
 }
 
 void triggerPosition() {
-  AmyPresetSink sink(audioGate, drumSlot, preset);
-  TriggerPatternPlayer::emitStep(preset.pattern, position, sink);
+  TriggerPatternPlayer::emitStep(preset.pattern, position, triggerSink);
+}
+
+void configureTriggerVoices() {
+  for (uint8_t lane = 0; lane < TriggerPattern::LANE_COUNT; lane++) {
+    triggerSink.configureLane(
+        lane,
+        AmyTriggerVoice{
+            preset.midiNotes[lane], {}, preset.midiNotes[lane] != 0});
+  }
 }
 
 void selectNextStyle(uint64_t nowUs) {
   style = nextDrummerStyle(style);
   loadDrummerPreset(style, preset);
+  configureTriggerVoices();
   position = 0;
   if (!stepClock.reschedule(nowUs, stepIntervalUs(),
                             IntervalChangePolicy::ResetFromNow)) {
@@ -131,6 +107,7 @@ void setup() {
   M5.begin(config);
 
   loadDrummerPreset(style, preset);
+  configureTriggerVoices();
   drawScreen();
   amyBridge.begin();
   M5.Speaker.setVolume(128);
