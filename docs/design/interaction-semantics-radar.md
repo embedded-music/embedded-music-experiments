@@ -42,10 +42,10 @@ não foi extraído como contrato compartilhado.
 | Choke | política entre vozes | samplers e hi-hats de drum machines | ainda não testado | referência |
 | Monofonia / polifonia | alocação de vozes | MIDI, AMY e Roland P-6 | instrumento monofônico e slot AMY | adotado localmente |
 | Mute / mute all | política de pista | sequenciadores e Roland P-6 | interação planejada para Calculator | candidato |
-| Pattern | composição | sequenciadores e Roland P-6 | Calculator implementa um pattern volátil de quatro tracks por dezesseis steps | adotado localmente |
-| Sequence slot | armazenamento e seleção | 1010music Nanobox Razzmatazz | ainda não testado; Calculator tem apenas um pattern volátil | referência; candidato |
-| Note / rest | conteúdo do step | Behringer Crave e sequenciadores melódicos | Calculator implementa trigger/rest booleano sem pitch | adotado localmente para bateria |
-| Velocity / accent | evento e step | MIDI, Koala, Roland P-6 e Behringer Crave | velocity nos contratos e showcases MIDI | extraído para notas; candidato para steps |
+| Pattern | composição | sequenciadores e Roland P-6 | Calculator implementa quatro patterns voláteis de quatro tracks por dezesseis steps | adotado localmente |
+| Sequence slot | armazenamento e seleção | 1010music Nanobox Razzmatazz | Calculator valida quatro slots de pattern selecionáveis | adotado localmente |
+| Note / rest | conteúdo do step | Behringer Crave e sequenciadores melódicos | Calculator implementa rest ou trigger em três intensidades, sem pitch por step | adotado localmente para bateria |
+| Velocity / accent | evento e step | MIDI, Koala, Roland P-6 e Behringer Crave | velocity nos contratos MIDI; Calculator valida weak/normal/strong por step e os converte em velocity no sink AMY | extraído para notas; adotado localmente para steps |
 | Gate time | step e voz | Roland P-6 e Behringer Crave | ainda não necessário para bateria one-shot | adiado |
 | Probability | step | Roland P-6 | ainda não testado | referência |
 | Micro-timing | agendamento | Roland P-6 | ainda não testado | referência |
@@ -53,12 +53,12 @@ não foi extraído como contrato compartilhado.
 | Motion | automação de parâmetros | Roland P-6 | CC contínuo existe, mas não é sequenciado | referência |
 | Parameter lock | automação por step | Pocket Operators | ainda não testado | referência |
 | Punch-in effect | performance temporária | Pocket Operators | ainda não testado | referência |
-| Accent | expressão do step | Pocket Operators e drum machines | velocity existe, accent por step ainda não | candidato distante |
-| Swing | clock e agendamento | Pocket Operators, Roland P-6 e Korg Volca | Calculator possui BPM variável, mas divisão reta | referência |
+| Accent | expressão do step | Pocket Operators e drum machines | Calculator edita três níveis por modificadores A/B e reproduz três intensidades | adotado localmente |
+| Swing | clock e agendamento | Pocket Operators, Roland P-6 e Korg Volca | Calculator valida 50--75%, pares long/short, bypass em rates `T`; mecanismo físico alternado extraído em `musical-clock` | adotado localmente; mecanismo extraído |
 | Step length / step count | geometria temporal | 1010music Nanobox Razzmatazz | Calculator fixa 16 steps e um rate global | referência; candidato |
-| Quantized sequence change | arranjo e transporte | 1010music Nanobox Razzmatazz | troca de pattern futura ainda não implementada | candidato |
-| Sequence copy / paste / double | edição e variação | 1010music Nanobox Razzmatazz | copy, variation e chains ainda são experimentos futuros | candidato |
-| Per-step velocity | expressão do evento | 1010music Nanobox Razzmatazz | Calculator ainda usa steps booleanos e velocidade fixa | referência; candidato |
+| Quantized sequence change | arranjo e transporte | 1010music Nanobox Razzmatazz | Calculator troca patterns na fronteira de dezesseis steps | adotado localmente |
+| Sequence copy / paste / double | edição e variação | 1010music Nanobox Razzmatazz | Calculator clona o pattern atual para outro slot; double continua futuro | adotado localmente para copy |
+| Per-step velocity | expressão do evento | 1010music Nanobox Razzmatazz | Calculator armazena `StepLevel` weak/normal/strong e mapeia para velocity | adotado localmente |
 | Step Loop / Scatter | performance sobre transporte | Roland P-6 | ainda não testado | referência |
 | Active Step | geometria do pattern | Korg Volca | todos os 16 steps implementados permanecem ativos | referência |
 | Step Jump | performance sobre transporte | Korg Volca | troca de pattern planejada é quantizada, não um jump | referência |
@@ -100,11 +100,11 @@ não foi extraído como contrato compartilhado.
 | Transformation pipeline | processamento de eventos | Arturia KeyLab mk3 | ainda não testado | referência |
 | Tie / legato transition | articulação do step | Arturia KeyStep e Moog Grandmother | ainda não testado | referência |
 | Polyphonic / chord step | conteúdo do step | Moog Matriarch | ainda não testado | referência |
-| Pattern chain | arranjo | Pocket Operators | patterns navegáveis planejados, mas não encadeados | referência |
+| Pattern chain | arranjo | Pocket Operators | Calculator valida doze posições visíveis com slots de pattern atribuídos | adotado localmente |
 | Chop | material sonoro e mapeamento | Roland P-6 | ainda não testado | referência |
 | Resampling | criação de material | Koala e Roland P-6 | ainda não testado | referência |
 | Síntese granular | engine sonora | Roland P-6 | AMY é outra classe de engine | referência |
-| Clock / transport | tempo e execução | MIDI e sequenciadores | `StepClock` local mantém playback contínuo na Calculator; metronome Plus2 será o segundo experimento | observado, candidato |
+| Clock / transport | tempo e execução | MIDI e sequenciadores | metronome e Calculator validam deadline absoluto; `musical-clock` extrai clocks periódico e alternado, enquanto transport permanece nos apps | mecanismo de clock extraído; transport candidato |
 | External clock priority | sincronização | 1010music Nanobox Razzmatazz | ainda não testado em nossos instrumentos | referência; candidato |
 | Program / bank | seleção de sons | MIDI e instrumentos digitais | patches AMY selecionados por canal | referência; sem contrato próprio |
 
@@ -144,15 +144,17 @@ press e release.
 
 O repositório
 [`calculator-face-input`](https://github.com/embedded-music/calculator-face-input)
-validou essa hipótese em hardware. Seu baseline possui quatro tracks, dezesseis
-steps booleanos, playhead contínuo, triggers one-shot AMY, BPM e volume
-ajustáveis, e seleção direta de vinte sons por track. A grade mantém edição
-normal sem modificador; Core A abre settings e Core B abre seleção de som.
+validou essa hipótese em hardware. Seu baseline possui quatro tracks, quatro
+patterns de dezesseis steps, chain, playhead contínuo, triggers one-shot AMY,
+três intensidades, BPM, rate, swing e volume ajustáveis, e seleção direta de
+vinte sons por track. A grade mantém edição normal sem modificador; Core A abre
+settings e Core B abre seleção de som.
 
-O app ainda possui somente um pattern volátil. Mute, clear, copy, variation,
-patterns múltiplos e chains permanecem experimentos locais futuros. Velocity,
-accent, probability, sub-steps e micro-timing continuam no radar sem inflar o
-modelo validado antes de existir evidência musical e de interface.
+O app agora possui quatro patterns voláteis, chain de doze posições, clone e
+clear de pattern, três intensidades por step, rates retos/triplets e swing.
+Mute, persistência, probability, sub-steps e micro-timing continuam no radar
+sem inflar contratos compartilhados antes de existir evidência musical e de
+interface.
 
 ## Pocket Operators como família
 
