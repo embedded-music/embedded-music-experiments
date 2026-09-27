@@ -12,12 +12,14 @@ showcase-list:
     @printf '1\tble-midi-buzzer\tshowcases/ble-midi-buzzer\n'
     @printf '2\tble-midi-core-gray-speaker\tshowcases/ble-midi-core-gray-speaker\n'
     @printf '3\tble-midi-amy\tshowcases/ble-midi-amy\n'
+    @printf '4\telectronic-drummer\tshowcases/electronic-drummer\n'
 
 _showcase-path id:
     @case "{{id}}" in \
       1) printf '%s\n' 'showcases/ble-midi-buzzer' ;; \
       2) printf '%s\n' 'showcases/ble-midi-core-gray-speaker' ;; \
       3) printf '%s\n' 'showcases/ble-midi-amy' ;; \
+      4) printf '%s\n' 'showcases/electronic-drummer' ;; \
       *) printf 'Unknown showcase id: %s\n' "{{id}}" >&2; exit 2 ;; \
     esac
 
@@ -26,6 +28,7 @@ _showcase-env id:
       1) printf '%s\n' 'm5stick-cplus2' ;; \
       2) printf '%s\n' 'm5stack-core-gray' ;; \
       3) printf '%s\n' 'm5stack-core-gray' ;; \
+      4) printf '%s\n' 'm5stack-core-gray' ;; \
       *) printf 'Unknown showcase id: %s\n' "{{id}}" >&2; exit 2 ;; \
     esac
 
@@ -34,6 +37,7 @@ _showcase-board id:
       1) printf '%s\n' 'm5stick-cplus2' ;; \
       2) printf '%s\n' 'm5stack-core-gray' ;; \
       3) printf '%s\n' 'm5stack-core-gray' ;; \
+      4) printf '%s\n' 'm5stack-core-gray' ;; \
       *) printf 'Unknown showcase id: %s\n' "{{id}}" >&2; exit 2 ;; \
     esac
 

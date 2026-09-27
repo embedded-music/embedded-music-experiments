@@ -25,6 +25,9 @@ Executable compositions live in `showcases/`.
   policy with the M5Stack Core Gray speaker output.
 - `showcases/ble-midi-amy/` composes BLE MIDI input with the AMY synth package
   and the Core Gray PCM speaker bridge.
+- `showcases/electronic-drummer/` composes fixed trigger presets, a deadline
+  clock, and AMY drums into a button-controlled Rock/Jazz/Euro Pop/metronome
+  player for the Core Gray.
 
 Run `just showcase-list` to see the numeric showcase IDs used by the build,
 upload, and monitor recipes.
