@@ -48,6 +48,6 @@ On an M5Stack Core Gray, verify that the musical styles are recognizably
 distinct, Jazz keeps the same BPM while using its triplet grid, Bossa feels
 natural at 110 BPM, Off is silent, and tempo changes do not restart the bar.
 
-The initial local dependency on the sibling `step-trigger` package is
-intentional. Replace it with the PlatformIO registry release after publishing
-`step-trigger-v0.1.0`; that replacement is the release-integration slice.
+The showcase consumes `fcz2/step-trigger@0.1.0` from the PlatformIO Registry,
+so it builds from a standalone umbrella checkout and participates in CI as
+Showcase 4.

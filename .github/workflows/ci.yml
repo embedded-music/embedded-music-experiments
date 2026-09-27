@@ -47,6 +47,8 @@ jobs:
             showcase_path: showcases/ble-midi-core-gray-speaker
           - showcase_id: 3
             showcase_path: showcases/ble-midi-amy
+          - showcase_id: 4
+            showcase_path: showcases/electronic-drummer
 
     steps:
       - name: Check out repository

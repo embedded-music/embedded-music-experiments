@@ -52,7 +52,7 @@ points PlatformIO at `firmware-contracts/include/` through `build.includeDir`.
 ## CI
 
 GitHub Actions validates the shared C++ headers, runs `pio pkg pack`, and builds
-the three M5StickC Plus2/Core Gray showcases on pushes and pull requests. The
+the four M5StickC Plus2/Core Gray showcases on pushes and pull requests. The
 workflow lives at `.github/workflows/ci.yml`.
 
 ## Local PlatformIO Cache
