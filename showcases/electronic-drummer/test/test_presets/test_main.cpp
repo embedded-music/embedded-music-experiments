@@ -40,11 +40,11 @@ void test_metronome_accents_first_beat() {
                           static_cast<uint8_t>(preset.pattern.stepLevel(1, 1)));
 }
 
-void test_off_style_has_an_empty_four_beat_cycle() {
+void test_off_style_has_one_repeating_silent_step() {
   DrummerPreset preset;
   loadDrummerPreset(DrummerStyle::Off, preset);
 
-  TEST_ASSERT_EQUAL_UINT8(4, preset.pattern.length());
+  TEST_ASSERT_EQUAL_UINT8(1, preset.pattern.length());
   TEST_ASSERT_EQUAL_UINT8(1, preset.stepsPerBeat);
   TEST_ASSERT_TRUE(preset.pattern.empty());
 }
@@ -68,10 +68,10 @@ void test_jazz_uses_maracas_without_a_duplicate_fourth_lane() {
   loadDrummerPreset(DrummerStyle::Jazz, preset);
 
   TEST_ASSERT_EQUAL_UINT8(70, preset.midiNotes[2]);
-  for (uint8_t position = 0; position < preset.pattern.length(); position++) {
+  for (uint8_t step = 0; step < preset.pattern.length(); step++) {
     TEST_ASSERT_EQUAL_UINT8(
         static_cast<uint8_t>(StepLevel::Off),
-        static_cast<uint8_t>(preset.pattern.stepLevel(3, position)));
+        static_cast<uint8_t>(preset.pattern.stepLevel(3, step)));
   }
 }
 
@@ -80,7 +80,7 @@ int main(int, char**) {
   RUN_TEST(test_presets_use_distinct_cycle_grids);
   RUN_TEST(test_style_cycle_returns_to_rock);
   RUN_TEST(test_metronome_accents_first_beat);
-  RUN_TEST(test_off_style_has_an_empty_four_beat_cycle);
+  RUN_TEST(test_off_style_has_one_repeating_silent_step);
   RUN_TEST(test_bossa_uses_two_bar_source_pattern);
   RUN_TEST(test_jazz_uses_maracas_without_a_duplicate_fourth_lane);
   return UNITY_END();

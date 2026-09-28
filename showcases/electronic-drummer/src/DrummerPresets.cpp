@@ -2,34 +2,27 @@
 
 #include <stddef.h>
 
+#include "TriggerPatternCell.h"
+#include "TriggerPatternLoader.h"
+
 namespace {
 
-struct AuthoredStep {
-  uint8_t lane;
-  uint8_t position;
-  StepLevel level;
-};
-
-template <size_t StepCount>
-void load(DrummerPreset& preset, const char* name, uint8_t length,
-          uint8_t stepsPerBeat,
-          const uint8_t (&midiNotes)[TriggerPattern::LANE_COUNT],
-          const AuthoredStep (&steps)[StepCount]) {
+template <size_t CellCount>
+void loadPreset(DrummerPreset& preset, const char* name, uint8_t length,
+                uint8_t stepsPerBeat,
+                const uint8_t (&midiNotes)[TriggerPattern::LANE_COUNT],
+                const TriggerPatternCell (&cells)[CellCount]) {
   preset.name = name;
   preset.stepsPerBeat = stepsPerBeat;
-  preset.pattern.clear();
-  preset.pattern.setLength(length);
+  TriggerPatternLoader::load(preset.pattern, length, cells);
   for (uint8_t lane = 0; lane < TriggerPattern::LANE_COUNT; lane++) {
     preset.midiNotes[lane] = midiNotes[lane];
-  }
-  for (const AuthoredStep& step : steps) {
-    preset.pattern.setStepLevel(step.lane, step.position, step.level);
   }
 }
 
 void loadRock(DrummerPreset& preset) {
   constexpr uint8_t notes[] = {36, 38, 42, 46};
-  constexpr AuthoredStep steps[] = {
+  constexpr TriggerPatternCell cells[] = {
       {0, 0, StepLevel::Strong}, {0, 8, StepLevel::Normal},
       {1, 4, StepLevel::Normal}, {1, 12, StepLevel::Strong},
       {2, 0, StepLevel::Normal}, {2, 2, StepLevel::Weak},
@@ -37,12 +30,12 @@ void loadRock(DrummerPreset& preset) {
       {2, 8, StepLevel::Normal}, {2, 10, StepLevel::Weak},
       {2, 12, StepLevel::Normal}, {3, 14, StepLevel::Normal},
   };
-  load(preset, "ROCK", 16, 4, notes, steps);
+  loadPreset(preset, "ROCK", 16, 4, notes, cells);
 }
 
-void loadJazz(DrummerPreset& preset, const char* name, uint8_t pulseNote) {
-  const uint8_t notes[] = {36, 38, pulseNote, 0};
-  constexpr AuthoredStep steps[] = {
+void loadJazz(DrummerPreset& preset) {
+  constexpr uint8_t notes[] = {36, 38, 70, 0};
+  constexpr TriggerPatternCell cells[] = {
       {0, 0, StepLevel::Weak}, {0, 6, StepLevel::Weak},
       {1, 3, StepLevel::Weak}, {1, 9, StepLevel::Weak},
       {2, 0, StepLevel::Strong}, {2, 2, StepLevel::Weak},
@@ -50,12 +43,12 @@ void loadJazz(DrummerPreset& preset, const char* name, uint8_t pulseNote) {
       {2, 6, StepLevel::Normal}, {2, 8, StepLevel::Weak},
       {2, 9, StepLevel::Normal}, {2, 11, StepLevel::Weak},
   };
-  load(preset, name, 12, 3, notes, steps);
+  loadPreset(preset, "JAZZ", 12, 3, notes, cells);
 }
 
 void loadBossa(DrummerPreset& preset) {
   constexpr uint8_t notes[] = {35, 79, 70, 42};
-  constexpr AuthoredStep steps[] = {
+  constexpr TriggerPatternCell cells[] = {
       {0, 0, StepLevel::Normal}, {0, 6, StepLevel::Normal},
       {0, 14, StepLevel::Normal}, {0, 16, StepLevel::Normal},
       {0, 22, StepLevel::Normal}, {0, 28, StepLevel::Weak},
@@ -75,12 +68,12 @@ void loadBossa(DrummerPreset& preset) {
       {3, 16, StepLevel::Weak}, {3, 20, StepLevel::Weak},
       {3, 24, StepLevel::Weak}, {3, 28, StepLevel::Weak},
   };
-  load(preset, "BOSSA", 32, 4, notes, steps);
+  loadPreset(preset, "BOSSA", 32, 4, notes, cells);
 }
 
 void loadEuroPop(DrummerPreset& preset) {
   constexpr uint8_t notes[] = {36, 39, 42, 46};
-  constexpr AuthoredStep steps[] = {
+  constexpr TriggerPatternCell cells[] = {
       {0, 0, StepLevel::Strong}, {0, 4, StepLevel::Strong},
       {0, 8, StepLevel::Strong}, {0, 12, StepLevel::Strong},
       {1, 4, StepLevel::Normal}, {1, 12, StepLevel::Normal},
@@ -88,25 +81,25 @@ void loadEuroPop(DrummerPreset& preset) {
       {2, 10, StepLevel::Weak}, {2, 14, StepLevel::Weak},
       {3, 7, StepLevel::Normal}, {3, 15, StepLevel::Normal},
   };
-  load(preset, "EURO POP", 16, 4, notes, steps);
+  loadPreset(preset, "EURO POP", 16, 4, notes, cells);
 }
 
 void loadMetronome(DrummerPreset& preset) {
   constexpr uint8_t notes[] = {76, 77, 0, 0};
-  constexpr AuthoredStep steps[] = {
+  constexpr TriggerPatternCell cells[] = {
       {0, 0, StepLevel::Strong},
       {1, 1, StepLevel::Normal},
       {1, 2, StepLevel::Normal},
       {1, 3, StepLevel::Normal},
   };
-  load(preset, "METRONOME", 4, 1, notes, steps);
+  loadPreset(preset, "METRONOME", 4, 1, notes, cells);
 }
 
 void loadOff(DrummerPreset& preset) {
   preset.name = "OFF";
   preset.stepsPerBeat = 1;
   preset.pattern.clear();
-  preset.pattern.setLength(4);
+  preset.pattern.setLength(1);
   for (uint8_t lane = 0; lane < TriggerPattern::LANE_COUNT; lane++) {
     preset.midiNotes[lane] = 0;
   }
@@ -125,7 +118,7 @@ void loadDrummerPreset(DrummerStyle style, DrummerPreset& preset) {
       loadRock(preset);
       return;
     case DrummerStyle::Jazz:
-      loadJazz(preset, "JAZZ", 70);
+      loadJazz(preset);
       return;
     case DrummerStyle::Bossa:
       loadBossa(preset);

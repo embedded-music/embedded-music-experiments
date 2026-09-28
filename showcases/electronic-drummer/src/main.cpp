@@ -2,31 +2,28 @@
 #include <M5Unified.h>
 #include <esp_timer.h>
 
-#include "AmyAudioActivityGate.h"
-#include "AmyM5SpeakerBridge.h"
-#include "AmyTriggerOutput.h"
-#include "DeadlineClock.h"
+#include "AmyM5TriggerOutput.h"
 #include "DrummerPresets.h"
 #include "TriggerPatternPlayer.h"
 
 namespace {
-constexpr uint8_t AMY_SYNTH_ID = 1;
-constexpr uint8_t AMY_DRUM_VOICES = 1;
-constexpr uint16_t AMY_GM_DRUM_PATCH = 258;
 constexpr uint16_t INITIAL_BPM = 120;
 constexpr uint16_t MINIMUM_BPM = 40;
 constexpr uint16_t MAXIMUM_BPM = 240;
 constexpr uint16_t BPM_INCREMENT = 5;
 
-AmyM5SpeakerBridge amyBridge;
-AmyAudioActivityGate audioGate(amyBridge);
-AmySynthSlot drumSlot;
-AmyTriggerSink triggerSink(audioGate, drumSlot);
-DeadlineClock stepClock;
+AmyM5TriggerOutput drumOutput;
 DrummerPreset preset;
+class PresetPatternSource final : public TriggerPatternSource {
+ public:
+  const TriggerPattern& currentPattern() const override {
+    return preset.pattern;
+  }
+};
+PresetPatternSource patternSource;
+TriggerPatternPlayer patternPlayer(patternSource, drumOutput);
 DrummerStyle style = DrummerStyle::Rock;
 uint16_t bpm = INITIAL_BPM;
-uint8_t position = 0;
 
 uint64_t stepIntervalUs() {
   return 60000000ULL / (static_cast<uint64_t>(bpm) * preset.stepsPerBeat);
@@ -53,13 +50,9 @@ void drawScreen() {
   M5.Display.print("A STYLE   B -   C +");
 }
 
-void triggerPosition() {
-  TriggerPatternPlayer::emitStep(preset.pattern, position, triggerSink);
-}
-
 void configureTriggerVoices() {
   for (uint8_t lane = 0; lane < TriggerPattern::LANE_COUNT; lane++) {
-    triggerSink.configureLane(
+    drumOutput.configureLane(
         lane,
         AmyTriggerVoice{
             preset.midiNotes[lane], {}, preset.midiNotes[lane] != 0});
@@ -70,14 +63,13 @@ void selectNextStyle(uint64_t nowUs) {
   style = nextDrummerStyle(style);
   loadDrummerPreset(style, preset);
   configureTriggerVoices();
-  position = 0;
-  if (!stepClock.reschedule(nowUs, stepIntervalUs(),
-                            IntervalChangePolicy::ResetFromNow)) {
+  if (!patternPlayer.restart(
+          nowUs, StepIntervals::constant(stepIntervalUs()),
+          TriggerStart::EmitImmediately)) {
     Serial.println("clock: style_reschedule_failed");
   }
   drawScreen();
-  triggerPosition();
-  Serial.printf("style=%s positions=%u steps_per_beat=%u\n", preset.name,
+  Serial.printf("style=%s steps=%u steps_per_beat=%u\n", preset.name,
                 preset.pattern.length(), preset.stepsPerBeat);
 }
 
@@ -88,8 +80,9 @@ void changeTempo(int16_t delta, uint64_t nowUs) {
                             : requested > MAXIMUM_BPM ? MAXIMUM_BPM : requested;
   if (next == bpm) return;
   bpm = next;
-  if (!stepClock.reschedule(nowUs, stepIntervalUs(),
-                            IntervalChangePolicy::PreservePhase)) {
+  if (!patternPlayer.changeTiming(
+          nowUs, StepIntervals::constant(stepIntervalUs()),
+          TriggerTimingChange::PreservePhase)) {
     Serial.println("clock: tempo_reschedule_failed");
   }
   drawScreen();
@@ -109,14 +102,13 @@ void setup() {
   loadDrummerPreset(style, preset);
   configureTriggerVoices();
   drawScreen();
-  amyBridge.begin();
-  M5.Speaker.setVolume(128);
-  drumSlot.begin(AMY_SYNTH_ID, AMY_DRUM_VOICES, AMY_GM_DRUM_PATCH);
+  drumOutput.begin();
   const uint64_t nowUs = static_cast<uint64_t>(esp_timer_get_time());
-  if (!stepClock.begin(nowUs, stepIntervalUs())) {
+  if (!patternPlayer.begin(nowUs,
+                           StepIntervals::constant(stepIntervalUs()),
+                           TriggerStart::EmitImmediately)) {
     Serial.println("clock: begin_failed");
   }
-  triggerPosition();
   Serial.printf("electronic_drummer: style=%s tempo_bpm=%u\n", preset.name,
                 bpm);
 }
@@ -129,15 +121,12 @@ void loop() {
   if (M5.BtnB.wasPressed()) changeTempo(-BPM_INCREMENT, nowUs);
   if (M5.BtnC.wasPressed()) changeTempo(BPM_INCREMENT, nowUs);
 
-  const ClockAdvance advance = stepClock.poll(nowUs);
-  if (advance.elapsed_intervals > 0) {
-    position = static_cast<uint8_t>(
-        (position + advance.elapsed_intervals) % preset.pattern.length());
-    if (advance.elapsed_intervals == 1) triggerPosition();
-    else Serial.printf("transport: skipped_positions=%lu\n",
-                       static_cast<unsigned long>(advance.elapsed_intervals));
+  const TriggerPatternPlayerUpdate playback = patternPlayer.update(nowUs);
+  if (playback.elapsedSteps > 1) {
+    Serial.printf("playback: skipped_steps=%lu\n",
+                  static_cast<unsigned long>(playback.elapsedSteps));
   }
 
-  audioGate.update(false);
+  drumOutput.update();
   delay(1);
 }

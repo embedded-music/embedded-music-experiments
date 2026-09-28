@@ -12,8 +12,9 @@ the shared trigger sequencer's events directly into it. Style presets continue
 to own patterns and MIDI-note choices; the AMY package owns audio wake-up,
 accent velocity conversion, and note output.
 
-An Off preset disables its zero-valued lanes explicitly, avoiding an accidental
-MIDI note 0 if a pattern is later added to that preset.
+An Off preset disables its zero-valued lanes explicitly and uses the smallest
+valid pattern: one silent step repeated indefinitely. This avoids both an
+arbitrary silent bar and an accidental MIDI note 0 if a cell is later added.
 
 ## Validation
 
